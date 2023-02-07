@@ -14,7 +14,7 @@ import statsmodels.api as sm
 from statsmodels.stats.outliers_influence import summary_table 
 from scipy.stats import chisquare
 
-from data_preprocess import *
+from utils import *
 
 
 class data_visualization():
@@ -266,9 +266,9 @@ def tsne_visualization(data, label, out_name):
 
 
 def load_meta_label_data(data_path, primary_site, label_type):
-    # x = pd.read_csv(os.path.join(data_path, 'output', 'x_tpm.tsv'), sep='\t', index_col=0)
+    # x = pd.read_csv(os.path.join(data_path, 'output', 'x.tsv'), sep='\t', index_col=0)
     z = pd.read_csv(os.path.join(data_path, 'output', 'z.tsv'), sep='\t', index_col=0)
-    # bf_x = pd.read_csv(os.path.join(data_path, 'output', 'bfx_tpm.tsv'), sep='\t', index_col=0)
+    # bf_x = pd.read_csv(os.path.join(data_path, 'output', 'bfx.tsv'), sep='\t', index_col=0)
     # combat = pd.read_csv(os.path.join(data_path, 'output', 'combat_x.tsv'), sep='\t', index_col=0).T
     label = pd.read_csv('/vol1/cuipeng_group/qiankun/CVAE/data/labels.tsv', sep='\t', index_col=0)
     # x = log2_feature(x, data_type='TPM')
@@ -362,9 +362,9 @@ if __name__ == '__main__':
     #     os.mkdir(out_path)
     # # data_list = ['combat_log2tpm', 'limma_log2tpm' ,'combat_tpm', 'limma_tpm']
     # # data_list = ['ruvs_counts', 'limma_log2counts', 'limma_counts', 'combat_counts']
-    # data_list = ['x_tpm']
+    # data_list = ['x']
     # pcr = scaled_pc_regression()
-    # label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/y_data.tsv', sep='\t', index_col=0)
+    # label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/TCGA_GTEx/y_data.tsv', sep='\t', index_col=0)
     # for i in data_list:
     #     data = pd.read_csv(os.path.join(data_path, 'output', (i + '.tsv')), sep='\t', index_col=0)
     #     output = pcr(data, label['primary_site'], 20)
@@ -376,7 +376,7 @@ if __name__ == '__main__':
     #     tsne_visualization(data, label['primary_site'], (i+'_tsne'))
     #######################################################################################
     # data = pd.read_csv(os.path.join(data_path, 'output', 'cpu1_ckpt56_z.tsv'), sep='\t', index_col=0)
-    # label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/y_data.tsv', sep='\t', index_col=0)
+    # label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/TCGA_GTEx/y_data.tsv', sep='\t', index_col=0)
     # rejection_rates = []
     # for name, group in label.groupby(['cancer_type', 'primary_site']):
     #     if group['batch'].nunique() > 1:
@@ -395,7 +395,7 @@ if __name__ == '__main__':
     # # data_list = ['cpu1_ckpt56_bf_x', 'cpu1_ckpt56_z']
     # score = pd.DataFrame()
     # for i in data_list:
-    #     label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/y_data.tsv', sep='\t', index_col=0)
+    #     label = pd.read_csv('/vol1/cuipeng_group/qiankun/GAN-VAE/data/TCGA_GTEx/y_data.tsv', sep='\t', index_col=0)
     #     ce = cp(i, label)
     #     ari = ce.adjusted_rand_index()
     #     ami = ce.mutual_info_score()

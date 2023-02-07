@@ -92,7 +92,7 @@ def embed_gene_with_tsne(x):
     elif B < A:
         B = expand_to_2power(B)
 
-    print("image precision is {}, minimum distance of points is {}".format(precision, d_min))
+    print('image precision is {}, minimum distance of points is {}'.format(precision, d_min))
     x_pixel = np.round(1 + A * (rotated_gene_loc[:,0] - x_min) / (x_max - x_min))
     y_pixel = np.round(1 + B * (rotated_gene_loc[:,1] - y_min) / (y_max - y_min))
 
@@ -129,13 +129,13 @@ def uniq_sort_insert_pixels(pixel_loc_df):
     '''move around all duplicate gene pixels'''
 
     pixel_loc_df = pixel_loc_df.astype('int')
-    uniq_df = pixel_loc_df.drop_duplicates(keep="first")
+    uniq_df = pixel_loc_df.drop_duplicates(keep='first')
 
     duplicate_gene = list(set(pixel_loc_df.index).difference(set(uniq_df.index)))
     duplicate_df = pixel_loc_df.loc[duplicate_gene]
-    print("The number of duplicate pixel points is {}, total gene number is {}".format(len(duplicate_df), len(pixel_loc_df)))
+    print('The number of duplicate pixel points is {}, total gene number is {}'.format(len(duplicate_df), len(pixel_loc_df)))
     uniq_df = uniq_df.copy() 
-    uniq_df["coords"] = [[x,y] for x, y in zip(uniq_df.iloc[:,0],uniq_df.iloc[:,1])]
+    uniq_df['coords'] = [[x,y] for x, y in zip(uniq_df.iloc[:,0],uniq_df.iloc[:,1])]
 
     x_p_min = np.min(pixel_loc_df.iloc[:,0])
     x_p_max = np.max(pixel_loc_df.iloc[:,0])
@@ -147,20 +147,20 @@ def uniq_sort_insert_pixels(pixel_loc_df):
     for id in duplicate_gene:
         x = duplicate_df.loc[id][0]
         y = duplicate_df.loc[id][1]
-        new_x, new_y, move_distance = move_around(x, y, x_p_max, x_p_min, y_p_max, y_p_min, uniq_df["coords"].to_list())
+        new_x, new_y, move_distance = move_around(x, y, x_p_max, x_p_min, y_p_max, y_p_min, uniq_df['coords'].to_list())
         uniq_df.loc[id] = [new_x, new_y, [new_x, new_y]]
         total_move_distance += move_distance
         if move_distance > max_move_distance:
             max_move_distance = move_distance
 
-    print("max move step is {}, mean move step is {}".format(max_move_distance, (total_move_distance/len(duplicate_gene))))   
+    print('max move step is {}, mean move step is {}'.format(max_move_distance, (total_move_distance/len(duplicate_gene))))   
     
-    uniq_df.drop("coords", axis=1, inplace=True)
-    uniq_df.columns = ["x_coord", "y_coord"]
+    uniq_df.drop('coords', axis=1, inplace=True)
+    uniq_df.columns = ['x_coord', 'y_coord']
     all_pixels = np.array([[i, j] for i in range(x_p_min,x_p_max+1) for j in range(y_p_min,y_p_max+1)])
-    all_pixels_df = pd.DataFrame({"x_coord":all_pixels[:,0], "y_coord":all_pixels[:,1]})
-    all_pixels_df = pd.concat([uniq_df, all_pixels_df], join="outer")
-    sorted_pixels_df = all_pixels_df.drop_duplicates(keep = "first").sort_values(by=["x_coord", "y_coord"])
+    all_pixels_df = pd.DataFrame({'x_coord':all_pixels[:,0], 'y_coord':all_pixels[:,1]})
+    all_pixels_df = pd.concat([uniq_df, all_pixels_df], join='outer')
+    sorted_pixels_df = all_pixels_df.drop_duplicates(keep = 'first').sort_values(by=['x_coord', 'y_coord'])
     
     return sorted_pixels_df
 
@@ -195,7 +195,7 @@ class Closest_Pair_of_Points():
  
     def divide(self, start, end):
         if start == end:
-            return float("inf")
+            return float('inf')
         if (start + 1) == end:
             return self.distance(self.p[start], self.p[end])
                     
@@ -236,13 +236,13 @@ def generate_2d_loc(features):
 
 if __name__ == '__main__':
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, "data")
+    data_path = os.path.join(current_dir, 'data')
     if not os.path.exists(data_path):
         os.mkdir(data_path)
 
-    x_train = pd.read_csv(os.path.join(data_path, "x_train.tsv"), index_col=0, sep="\t")
+    x_train = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/x_train.tsv'), index_col=0, sep='\t')
     sorted_pixels = generate_2d_loc(x_train)
-    sorted_pixels.to_csv(os.path.join(data_path, "tsne_sorted_pixels_coords.csv"))
+    sorted_pixels.to_csv(os.path.join(data_path, 'tsne_sorted_pixels_coords.csv'))
 
 
 

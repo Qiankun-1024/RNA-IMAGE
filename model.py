@@ -24,7 +24,6 @@ class BF_Generator(tf.keras.Model):
                 tf.keras.layers.LeakyReLU(),
                 # No activation
                 tf.keras.layers.Dense((self.z_dim + self.z_dim)),
-                # tf.keras.layers.Dense(self.z_dim),
             ]
         )
 
@@ -78,7 +77,6 @@ class BF_Generator(tf.keras.Model):
         return logits
 
 
-
 class Batch_Encoder(tf.keras.Model):
     
     def __init__(self, input_shape, z_dim):
@@ -99,7 +97,6 @@ class Batch_Encoder(tf.keras.Model):
                 tf.keras.layers.Dense(1000),
                 tf.keras.layers.LeakyReLU(),
                 # No activation
-                # tf.keras.layers.Dense(z_dim)
                 tf.keras.layers.Dense(z_dim + z_dim)
             ]
         )
@@ -116,9 +113,7 @@ class Batch_Encoder(tf.keras.Model):
     def call(self, x):
         mean, logvar = tf.split(self.encoder(x), num_or_size_splits=2, axis=1)
         z = self.reparameterize(mean, logvar)
-        # z = self.encoder(x)
         return z
-
 
 
 class GroupNormalization(tf.keras.layers.Layer):
@@ -150,122 +145,6 @@ class GroupNormalization(tf.keras.layers.Layer):
         x = (x - mean) / tf.sqrt(var + self.epsilon)
         x = tf.reshape(x, [self.N, C, H, W]) 
         return self.gamma * x + self.beta
-
-
-
-def downsample(filters, kernel_size, norm_type='batchnorm', apply_norm=True):
-    result = tf.keras.Sequential()
-    result.add(
-        tf.keras.layers.Conv2D(filters, kernel_size, strides=2, padding='same')
-        )
-
-    if apply_norm:
-        if norm_type.lower() == 'batchnorm':
-            result.add(tf.keras.layers.BatchNormalization())
-        elif norm_type.lower() == 'instancenorm':
-            result.add(tfa.layers.InstanceNormalization())
-        elif norm_type.lower() == 'groupnorm':    
-            result.add(tfa.layers.GroupNormalization())
-
-    result.add(tf.keras.layers.LeakyReLU())
-
-    return result
-
-
-def upsample(filters, kernel_size, norm_type='batchnorm', apply_dropout=False):
-    result = tf.keras.Sequential()
-    result.add(
-        tf.keras.layers.Conv2DTranspose(filters, kernel_size, strides=2, padding='same')
-        )
-
-    if norm_type.lower() == 'batchnorm':
-        result.add(tf.keras.layers.BatchNormalization())
-    elif norm_type.lower() == 'instancenorm':
-        result.add(tfa.layers.InstanceNormalization())
-    elif norm_type.lower() == 'groupnorm':    
-        result.add(tfa.layers.GroupNormalization())
-
-    if apply_dropout:
-        result.add(tf.keras.layers.Dropout(0.5))
-
-    result.add(tf.keras.layers.LeakyReLU())
-
-    return result
-
-    
-
-# class Unet_Generator(tf.keras.Model):
-#     def __init__(self, z_dim, norm_type):
-#         super(Unet_Generator, self).__init__()
-#         self.z_dim = z_dim
-#         self.norm_type = norm_type
-
-#     def build(self, input_shape):
-#         self.down_stack = [
-#             downsample(64, 5, self.norm_type, apply_norm=True),  # (bs, 64, 128, 64)
-#             downsample(64, 5, self.norm_type),  # (bs, 32, 64, 64)
-#             downsample(128, 5, self.norm_type),  # (bs, 16, 32, 128)
-#             downsample(256, 5, self.norm_type),  # (bs, 8, 16, 256)
-#             # downsample(512, 5, self.norm_type),  # (bs, 8, 8, 512)
-#             # downsample(512, 5, self.norm_type),  # (bs, 4, 4, 512)
-#             # downsample(512, 5, self.norm_type),  # (bs, 2, 2, 512)
-#             # downsample(512, 5, self.norm_type),  # (bs, 1, 1, 512)
-#         ]
-#         self.up_stack = [
-#             # upsample(512, 5, self.norm_type, apply_dropout=True),  # (bs, 2, 2, 1024)
-#             # upsample(512, 5, self.norm_type, apply_dropout=True),  # (bs, 4, 4, 1024)
-#             # upsample(512, 5, self.norm_type, apply_dropout=True),  # (bs, 8, 8, 1024)
-#             # upsample(512, 5, self.norm_type),  # (bs, 16, 16, 1024)
-#             upsample(128, 5, self.norm_type, apply_dropout=True),  # (bs, 16, 32, 256)
-#             upsample(64, 5, self.norm_type, apply_dropout=True),  # (bs, 32, 64, 128)
-#             upsample(64, 5, self.norm_type),  # (bs, 64, 128, 128)
-#         ]
-
-#         self.inputs = tf.keras.layers.InputLayer(input_shape=(input_shape[1], input_shape[2], 1))
-#         self.flatten = tf.keras.Sequential(
-#             [
-#                 tf.keras.layers.Flatten(),
-#                 tf.keras.layers.Dense(1000),
-#                 tf.keras.layers.LeakyReLU(),
-#                 tf.keras.layers.Dense(self.z_dim),
-#                 tf.keras.layers.LeakyReLU()
-#             ]
-#         )
-#         self.reshape = tf.keras.Sequential(
-#             [
-#                 tf.keras.layers.Dense(1000),
-#                 tf.keras.layers.LeakyReLU(),
-#                 tf.keras.layers.Dense(units=8*16*256),
-#                 tf.keras.layers.LeakyReLU(),
-#                 tf.keras.layers.Reshape(target_shape=(8, 16, 256))
-#             ]
-#         )
-#         self.concat = tf.keras.layers.Concatenate()
-#         self.last = tf.keras.layers.Conv2DTranspose(1, 4, strides=2, padding='same')
-
-
-#     def call(self, x, z, apply_sigmoid=False):
-#         x = self.inputs(x)
-#         skips = []
-#         for down in self.down_stack:
-#             x = down(x)
-#             skips.append(x)
-#         skips = reversed(skips[:-1])
-
-#         x = self.flatten(x)
-#         x = self.concat([x,z])
-#         x = self.reshape(x)
-
-#         for up, skip in zip(self.up_stack, skips):
-#             x = up(x)
-#             x = self.concat([x, skip])
-
-#         x = self.last(x)
-
-#         if apply_sigmoid:
-#             x = tf.sigmoid(x)
-#         return x
-
 
 
 class Generator(tf.keras.Model):
@@ -322,14 +201,10 @@ class Generator(tf.keras.Model):
         return x
 
 
-
 def make_batch_Descriminator_z(output_dim, activation='softmax'):
     model = tf.keras.Sequential()
     model.add(tf.keras.layers.LeakyReLU())
     model.add(tf.keras.layers.Dropout(0.3))
-    # model.add(tf.keras.layers.Dense(100))
-    # model.add(tf.keras.layers.LeakyReLU())
-    # model.add(tf.keras.layers.Dropout(0.3))
     model.add(tf.keras.layers.Dense(output_dim, activation=activation))
     return model
 
@@ -343,7 +218,6 @@ def make_category_Descriminator_z(output_dim, activation='sigmoid'):
     model.add(tf.keras.layers.Dropout(0.3))
     model.add(tf.keras.layers.Dense(output_dim, activation=activation))
     return model
-
 
 
 def make_Descriminator_x(input_shape, output_dim, activation='sigmoid'):
@@ -412,7 +286,6 @@ def set_training_target_score(label, score=0.9):
     return label
 
 
-
 def log_normal_pdf(sample, mean, logvar, raxis=1):
     log2pi = tf.math.log(2. * np.pi)
     return tf.reduce_mean(
@@ -430,11 +303,9 @@ def conditional_VAE_loss(x, zc_mean, zc_logvar, zc, zb_mean, zb_logvar, zb, x_lo
     return -tf.reduce_mean(logpx_bc + logpc - logqc_x + logpb - logqb_x)
 
 
-
 def L2_loss(x, bf_x):
     loss = tf.reduce_mean(tf.square(x - bf_x))
     return loss
-
 
 
 def L1_loss(x, bf_x):
@@ -442,11 +313,9 @@ def L1_loss(x, bf_x):
     return loss
 
 
-
 def feature_matching_loss(x_feature, bf_x_feature):
     loss = tf.reduce_mean(tf.square(x_feature - bf_x_feature))
     return loss
-
 
 
 def batch_discriminator_loss(zb_batch, zc_batch, batch):
@@ -455,12 +324,10 @@ def batch_discriminator_loss(zb_batch, zc_batch, batch):
     return tf.reduce_mean(zb_loss + 5 * zc_loss)
 
 
-
 def category_discriminator_loss(zb_category, zc_category, category):
     zb_loss = focal_loss(category, zb_category)
     zc_loss = focal_loss(category, zc_category)
     return tf.reduce_mean(0 * zb_loss + zc_loss)
-
 
 
 def Zb_generator_loss(zb_batch, zb_category, batch, category):
@@ -469,12 +336,10 @@ def Zb_generator_loss(zb_batch, zb_category, batch, category):
     return tf.reduce_mean(zb_category_loss + zb_batch_loss)
 
 
-
 def Zc_generator_loss(zc_batch, zc_category, batch, category):
     zc_batch_loss = cross_entropy(tf.zeros_like(batch), zc_batch)
     zc_category_loss = focal_loss(category, zc_category)
     return tf.reduce_mean(zc_batch_loss + zc_category_loss)
-
 
 
 def bf_discriminator_loss(x_output, bf_x_output, batch):
@@ -483,12 +348,10 @@ def bf_discriminator_loss(x_output, bf_x_output, batch):
     return tf.reduce_mean(x_loss + bf_x_loss)
 
 
-
 def bf_generator_loss(bf_x_batch, bf_x_category, category):
     batch_loss = cross_entropy(tf.zeros_like(bf_x_batch), bf_x_batch)
     category_loss = focal_loss(category, bf_x_category)
     return tf.reduce_mean(batch_loss + category_loss)
-
 
 
 def bf_classifier_loss(x_output, category):    
