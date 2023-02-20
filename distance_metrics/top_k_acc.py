@@ -71,12 +71,12 @@ if __name__ == '__main__':
     z = pd.read_csv('./data/output/zc.tsv', index_col=0, sep='\t')
     mean = pd.read_csv('./data/output/mean.tsv', index_col=0, sep='\t')
     logvar = pd.read_csv('./data/output/logvar.tsv', index_col=0, sep='\t')
-    sample_label = label.sample(100, random_state=42)
+    sample_label = label.sample(200, random_state=42)
     label_ = label.loc[~label.index.isin(sample_label.index)]
     
     top_k_acc = top_k_accuracy(z, mean, logvar,
                                 label_, sample_label,
-                                topk=200)
+                                topk=50)
     
     Euclidean_acc, Euclidean_time = top_k_acc.result(metric='Euclidean_Distances')
     Cos_acc, Cos_time = top_k_acc.result(metric='Cosine_Distances')
