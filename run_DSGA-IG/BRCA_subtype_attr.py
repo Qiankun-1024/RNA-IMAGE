@@ -46,7 +46,7 @@ def onegroup_diff(data, label,i):
         
 
 def multiprocessing_all_diff():
-    cluster_label = pd.read_csv('./attr_src/cluster_label.tsv',
+    cluster_label = pd.read_csv('./data/output/clustering/coare_grained/cluster_label.tsv',
                             index_col=0, sep='\t')
     meta = pd.read_csv('./data/TCGA_GTEx/meta_info.tsv',
                     sep= '\t', index_col=0)

@@ -28,7 +28,7 @@ if __name__ == '__main__':
     mean = pd.read_csv('./data/output/mean.tsv', index_col=0, sep='\t')
     logvar = pd.read_csv('./data/output/logvar.tsv', index_col=0, sep='\t')
     
-    ct_list = ['BRCA', 'KIRP', 'CESC']
+    ct_list = ['BRCA', 'KIRP', 'KIRC']
     for ct in ct_list:
         label_ = label[label['cancer_type']==ct]
         mean_ = mean.loc[label_.index]

@@ -6,10 +6,10 @@ from metrics import *
 from sklearn import metrics
 
 class top_k_accuracy():
-    def __init__(self, z, mean, logvar, label, sample_label, sample_num=100, topk=50):
-        self.z, self.mean, self.logvar, self.label = z, mean, logvar, label
+    def __init__(self, z, mean, logvar, label, sample_label, topk=50):
+        self.z, self.mean, self.logvar, self.label, self.sample_label = z, mean, logvar, label, sample_label
         self.k = topk
-        self.n = sample_num
+        self.n = len(sample_label)
         self.sample_index = sample_label.index
       
     def result(self, metric='Euclidean_Distances'):
@@ -39,18 +39,18 @@ class top_k_accuracy():
                     eps_y = np.random.normal(size=(50,len(y_mean)))
                     y_posterior = eps_y * np.exp(y_logvar * .5) + y_mean
                     distance.append(npd(x, y, x_posterior, y_posterior))
-
+                    
             sort_distance = pd.DataFrame({metric:distance}, 
                                          index=self.label.index)
-            sort_distance = sort_distance.sort_values(by=metric, ascending=True).head(self.k + 1)
+            sort_distance = sort_distance.sort_values(by=metric, ascending=True).head(self.k)
             sort_label = self.label.loc[sort_distance.index]
-            true_label = sort_label.drop(sort_label.index[0])
-            label_counts = sort_label.drop(sort_label.index[0])
+            true_label = sort_label
+            label_counts = sort_label
             for c in sort_label.columns:
                 true_label[c] = true_label[c].apply(
-                    lambda x : 1 if (x == self.label.loc[i,c]) & (x != 'None') else 0)
+                    lambda x : 1 if (x == self.sample_label.loc[i,c]) & (x != 'None') else 0)
                 label_counts[c] = label_counts[c].apply(
-                    lambda x : 1 if (x != 'None') & (self.label.loc[i,c] != 'None') else 0)
+                    lambda x : 1 if (x != 'None') & (self.sample_label.loc[i,c] != 'None') else 0)
             true_label = true_label.values
             label_counts = label_counts.values
             top_k_acc += np.sum(true_label, axis=1)/np.sum((label_counts + 1e-6), axis=1)
@@ -67,14 +67,16 @@ if __name__ == '__main__':
     
     label = pd.read_csv('./data/TCGA_GTEx/y_data.tsv', index_col=0, sep='\t')
     label = label.drop(['batch'], axis=1)
+    print(label)
     z = pd.read_csv('./data/output/zc.tsv', index_col=0, sep='\t')
     mean = pd.read_csv('./data/output/mean.tsv', index_col=0, sep='\t')
     logvar = pd.read_csv('./data/output/logvar.tsv', index_col=0, sep='\t')
-    sample_label = label.sample(200, random_state=42)
+    sample_label = label.sample(100, random_state=42)
+    label_ = label.loc[~label.index.isin(sample_label.index)]
     
     top_k_acc = top_k_accuracy(z, mean, logvar,
-                                label, sample_label,
-                                topk=50)
+                                label_, sample_label,
+                                topk=200)
     
     Euclidean_acc, Euclidean_time = top_k_acc.result(metric='Euclidean_Distances')
     Cos_acc, Cos_time = top_k_acc.result(metric='Cosine_Distances')
@@ -95,6 +97,7 @@ if __name__ == '__main__':
     breast_label = breast_label[~breast_label['PAM50_Subtype'].isna()]
     breast_label = breast_label.sample(100, random_state=42)
     breast_label = breast_label[['cancer_type', 'PAM50_Subtype']]
+    label = label[['cancer_type', 'PAM50_Subtype']]
     
     breast_zc = pd.read_csv('./data/output/breast_zc.tsv', index_col=0, sep='\t')
     breast_mean = pd.read_csv('./data/output/breast_mean.tsv', index_col=0, sep='\t')
