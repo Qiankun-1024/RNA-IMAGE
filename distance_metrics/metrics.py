@@ -15,7 +15,7 @@ def Pearson_Distances(A, B):
     A = np.squeeze(A)
     B = np.squeeze(B)
     r, p = stats.pearsonr(A, B)
-    return 1-r, p
+    return 1-r
 
 
 def KL_Divergence(A_mean, A_logvar, B_mean, B_logvar):
@@ -32,7 +32,6 @@ def Wasserstein_Distance(A_mean, A_logvar, B_mean, B_logvar):
     p1 = (np.sum(np.subtract(A_mean, B_mean) ** 2)) ** 0.5
     p2 = np.sum(np.subtract(np.exp(A_logvar) ** 0.5, np.exp(B_logvar) ** 0.5) ** 2)
     return p1+p2
-
 
 
 def npd(

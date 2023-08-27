@@ -80,10 +80,13 @@ breast_data = pd.read_csv('./data/Breast/breast_data.tsv',
 breast_data = log2_feature(breast_data, dtype='TPM')
 breast_zc = pd.read_csv('./data/output/breast_zc.tsv',
                         index_col=0, sep='\t')
+breast_zb = pd.read_csv('./data/output/breast_zb.tsv',
+                        index_col=0, sep='\t')
 breast_bfx = pd.read_csv('./data/output/breast_bfx.tsv',
                          index_col=0, sep='\t')
 breast_bfx = log2_feature(breast_bfx, dtype='TPM')
 breast_zc = breast_zc.loc[breast_label.index]
+breast_zb = breast_zb.loc[breast_label.index]
 breast_data = breast_data.loc[breast_label.index]
 breast_bfx = breast_bfx.loc[breast_label.index]
 _, embed_x = umap_visualization(breast_data, breast_label,
@@ -92,10 +95,14 @@ _, embed_x = umap_visualization(breast_data, breast_label,
 _, embed_zc = umap_visualization(breast_zc, breast_label,
                                  ['batch'], z_dim=100,
                                  n_neighbors=8, min_dist=0.99)
+_, embed_zb = umap_visualization(breast_zb, breast_label,
+                                 ['batch'], z_dim=100,
+                                 n_neighbors=8, min_dist=0.99)
 _, embed_bfx = umap_visualization(breast_bfx, breast_label,
                                   ['batch'], z_dim=100,
                                   n_neighbors=200, min_dist=0.99)
 embed_x.to_csv('./figure/UMAP/breast_x.tsv', sep='\t')
 embed_zc.to_csv('./figure/UMAP/breast_zc.tsv', sep='\t')
+embed_zb.to_csv('./figure/UMAP/breast_zb.tsv', sep='\t')
 embed_bfx.to_csv('./figure/UMAP/breast_bfx.tsv', sep='\t')
 

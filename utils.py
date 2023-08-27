@@ -1,15 +1,13 @@
-from calendar import c
 import os
-import re
-from joblib import Parallel
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 
-from model import BF_Generator, Batch_Encoder
+from model import BF_Generator, Batch_Encoder, Generator
 
 
-def load_model(ckpt='latest', ckpt_path='training_checkpoints', z_dim=100, only_encoder=False):
+def load_model(ckpt='latest', ckpt_path='training_checkpoints',
+               z_dim=100, only_encoder=False):
     bf_generator = BF_Generator((-1, 128, 256, 1), z_dim)
     if os.path.isdir(ckpt_path):
         print("=> loading checkpoint '{}'".format(ckpt_path))
@@ -30,9 +28,8 @@ def load_model(ckpt='latest', ckpt_path='training_checkpoints', z_dim=100, only_
     return bf_generator
 
 
-def load_batch_model(ckpt='latest', ckpt_path='', z_dim=100):
+def load_batch_model(ckpt='latest', ckpt_path='training_checkpoints', z_dim=100):
     batch_encoder = Batch_Encoder((-1, 128, 256, 1), z_dim)
-    ckpt_path = os.path.join(ckpt_path, 'training_checkpoints')
     if os.path.isdir(ckpt_path):
         print("=> loading checkpoint '{}'".format(ckpt_path))
     else:
@@ -50,24 +47,53 @@ def load_batch_model(ckpt='latest', ckpt_path='', z_dim=100):
     return batch_encoder
 
 
-def load_data():
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, 'data')
-    x_train = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/x_train.tsv'),
+def load_generator_model(ckpt='latest', ckpt_path='training_checkpoints', z_dim=100):
+    generator = Generator((-1, 128, 256, 1), z_dim)
+    if os.path.isdir(ckpt_path):
+        print("=> loading checkpoint '{}'".format(ckpt_path))
+    else:
+        print("=> no checkpoint found at '{}'".format(ckpt_path))
+        
+    checkpoint = tf.train.Checkpoint(generator=generator)
+    
+    if ckpt == 'latest':
+        ckpt_path = tf.train.latest_checkpoint(ckpt_path)
+    else:
+        ckpt_path = os.path.join(ckpt_path, ckpt)      
+          
+    checkpoint.restore(ckpt_path).expect_partial()  
+
+    return generator
+
+
+def load_data(data_path='data/TCGA_GTEx/', dtype='log2TPM'):
+    if dtype not in ['FPKM', 'TPM', 'log2TPM', 'normalizedTPM']:
+        raise ValueError(
+            f""" Allowed values: 'FPKM' ,'TPM', 'log2TPM' or 'normalizedTPM'
+                but provided {dtype}"""
+    )
+
+    x_train = pd.read_csv(os.path.join(data_path, 'x_train.tsv'),
                           index_col=0, sep='\t')
-    x_test = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/x_test.tsv'),
+    x_test = pd.read_csv(os.path.join(data_path, 'x_test.tsv'),
                          index_col=0, sep='\t')
-    c_train = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/c_train.tsv'),
+    c_train = pd.read_csv(os.path.join(data_path, 'c_train.tsv'),
                           index_col=0, sep='\t')
-    c_test = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/c_test.tsv'),
+    c_test = pd.read_csv(os.path.join(data_path, 'c_test.tsv'),
                          index_col=0, sep='\t')
-    b_train = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/b_train.tsv'),
+    b_train = pd.read_csv(os.path.join(data_path, 'b_train.tsv'),
                           index_col=0, sep='\t')
-    b_test = pd.read_csv(os.path.join(data_path, 'TCGA_GTEx/b_test.tsv'),
+    b_test = pd.read_csv(os.path.join(data_path, 'b_test.tsv'),
                          index_col=0, sep='\t')
 
-    x_train = normalize_feature(x_train)
-    x_test = normalize_feature(x_test)
+    
+    if dtype == 'TPM' or dtype == 'FPKM':
+        x_train = log2_feature(x_train, dtype)
+        x_test = log2_feature(x_test, dtype)
+        
+    if dtype != 'nomalizedTPM':
+        x_train = normalize_feature(x_train)
+        x_test = normalize_feature(x_test)  
 
     x_train = trans_1d_to_2d(x_train)
     x_test = trans_1d_to_2d(x_test)
@@ -80,13 +106,13 @@ def load_data():
 
 
 def trans_1d_to_2d(x_data):
-    piexl_coords = pd.read_csv("./data/tsne_sorted_pixels_coords.csv", index_col=0)
+    piexl_coords = pd.read_csv('./data/tsne_sorted_pixels_coords.csv', index_col=0)
 
-    x_len = piexl_coords["x_coord"].to_list()[-1]
-    y_len = piexl_coords["y_coord"].to_list()[-1]
+    x_len = piexl_coords['x_coord'].to_list()[-1]
+    y_len = piexl_coords['y_coord'].to_list()[-1]
 
     data_df = pd.merge(piexl_coords, x_data.T, how='left', left_index=True, right_index=True, sort=False)
-    data_df.drop(["x_coord", "y_coord"], axis=1, inplace=True)
+    data_df.drop(['x_coord', 'y_coord'], axis=1, inplace=True)
     data = data_df.fillna(0).T.values
 
     num = data.shape[0]
@@ -98,7 +124,7 @@ def trans_1d_to_2d(x_data):
 
 
 def trans_2d_to_1d(data):
-    piexl_coords = pd.read_csv("./data/tsne_sorted_pixels_coords.csv", index_col=0)
+    piexl_coords = pd.read_csv('./data/tsne_sorted_pixels_coords.csv', index_col=0)
 
     data = np.array(data)
     num = data.shape[0]
@@ -106,14 +132,14 @@ def trans_2d_to_1d(data):
     data_df = pd.DataFrame(data).T
     data_df.index = piexl_coords.index
     data_df = pd.concat([piexl_coords, data_df], axis=1)
-    data_df.drop(["x_coord", "y_coord"], axis=1, inplace=True)
+    data_df.drop(['x_coord', 'y_coord'], axis=1, inplace=True)
     data_df = data_df[data_df.index.str.startswith('ENSG')]
 
     return data_df.T
 
 
 def log2_feature(x_data, dtype='FPKM'):
-    if dtype not in ["FPKM", "TPM"]:
+    if dtype not in ['FPKM', 'TPM']:
         raise ValueError(
             f""" Allowed polarity values: 'positive' or 'negative'
                                     but provided {dtype}"""
@@ -135,12 +161,13 @@ def log2_feature(x_data, dtype='FPKM'):
     return log2_tpm
 
 
-def normalize_feature(log2_tpm):
+def normalize_feature(log2_tpm, max_matrix=None):
     #normalize the tpm value features on each gene by dividing by its maximum log2tpm value
-    max_matirx = pd.read_csv("./data/TCGA_GTEx/max_norm_tpm.tsv", index_col = 0, sep="\t")
-    max_matirx.columns = ['max_log2tpm']
+    if max_matrix is None:
+        max_matrix = pd.read_csv('./data/TCGA_GTEx/max_norm_tpm.tsv', index_col = 0, sep='\t')
+    max_matrix.columns = ['max_log2tpm']
 
-    log2_tpm_t = pd.merge(log2_tpm.T, (max_matirx+0.00000001), how='left', left_index=True, right_index=True, sort=False)
+    log2_tpm_t = pd.merge(log2_tpm.T, (max_matrix+0.00000001), how='left', left_index=True, right_index=True, sort=False)
     log2_tpm_t = log2_tpm_t.dropna(how='any', axis=0)
     norm_tpm_t = log2_tpm_t.div(log2_tpm_t['max_log2tpm'], axis=0)
     norm_tpm = norm_tpm_t.drop(['max_log2tpm'], axis=1).T
@@ -148,11 +175,12 @@ def normalize_feature(log2_tpm):
     return norm_tpm
 
 
-def reverse_log2_feature(norm_tpm):
+def reverse_log2_feature(norm_tpm, max_matrix=None):
     #reverse the normalized tpm value features to log2 tpm value on each gene by multiply by its maximum log2tpm value
-    max_matirx = pd.read_csv("./data/TCGA_GTEx/max_norm_tpm.tsv", index_col = 0, sep="\t")
-    max_matirx.columns = ['max_log2tpm']
-    norm_tpm_t = pd.merge(norm_tpm.T, (max_matirx+0.00000001), how='left', left_index=True, right_index=True, sort=False)
+    if max_matrix is None:
+        max_matrix = pd.read_csv('./data/TCGA_GTEx/max_norm_tpm.tsv', index_col = 0, sep='\t')
+    max_matrix.columns = ['max_log2tpm']
+    norm_tpm_t = pd.merge(norm_tpm.T, (max_matrix+0.00000001), how='left', left_index=True, right_index=True, sort=False)
     log2_tpm_t = norm_tpm_t.mul(norm_tpm_t['max_log2tpm'], axis=0)
     log2_tpm = log2_tpm_t.drop(['max_log2tpm'], axis=1).T
 
@@ -165,15 +193,18 @@ def reverse_tpm_feature(log2_tpm):
 
 
 def gene2img(data, dtype='TPM'):
-    if dtype not in ["FPKM", "TPM", "log2TPM"]:
+    if dtype not in ['FPKM', 'TPM', 'log2TPM', 'normalizedTPM']:
         raise ValueError(
-            f""" Allowed values: 'FPKM' ,'TPM' or 'log2TPM
+            f""" Allowed values: 'FPKM' ,'TPM', 'log2TPM' or 'normalizedTPM'
                 but provided {dtype}"""
     )
     
-    if dtype != 'log2TPM':
+    if dtype == 'FPKM' or dtype == 'TPM':
         data = log2_feature(data, dtype=dtype)
-    data = normalize_feature(data)
+    
+    if dtype != 'normalizedTPM':
+        data = normalize_feature(data)
+        
     data = trans_1d_to_2d(data).astype(np.float32)
     data = np.expand_dims(data, axis=3)  
     return data
@@ -181,6 +212,17 @@ def gene2img(data, dtype='TPM'):
 
 
 def generate_data(data, dtype='TPM', outdtype='TPM', batch_size=256, model=None):
+    if dtype not in ['FPKM', 'TPM', 'log2TPM', 'normalizedTPM']:
+        raise ValueError(
+            f""" Allowed values: 'FPKM' ,'TPM', 'log2TPM' or 'normalizedTPM'
+                but provided {dtype}"""
+    )
+    if outdtype not in ['TPM', 'log2TPM']:
+        raise ValueError(
+            f""" Allowed values: 'TPM' or 'log2TPM'
+                but provided {dtype}"""
+    )
+
     '''load model to generate batch free data'''
     if model is None:
         model = load_model()
@@ -348,3 +390,4 @@ def umap_visualization(data, label, plt_classes,
     embedding = pd.DataFrame(embedding)
     embedding.columns = ['UMAP1', 'UMAP2']
     return fig, embedding
+

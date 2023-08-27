@@ -67,8 +67,10 @@ if __name__ == '__main__':
     breast_data = pd.read_csv('./data/Breast/breast_data.tsv',
                               index_col=0, sep='\t')
     breast_zc, breast_bfx = generate_data(breast_data, dtype='TPM', outdtype='TPM')
+    breast_zb = generate_batch_data(breast_data, dtype='TPM')
     mean, logvar = generate_distribution(breast_data, dtype='TPM')
     breast_zc.to_csv('./data/output/breast_zc.tsv', sep='\t')
+    breast_zb.to_csv('./data/output/breast_zb.tsv', sep='\t')
     breast_bfx.to_csv('./data/output/breast_bfx.tsv', sep='\t')
     mean.to_csv('./data/output/breast_mean.tsv', sep='\t')
     logvar.to_csv('./data/output/breast_logvar.tsv', sep='\t')

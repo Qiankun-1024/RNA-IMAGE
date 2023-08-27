@@ -17,8 +17,10 @@ def parse_args():
 
     parser.add_argument('--z_dim', type=int, default=100,
                         help='Dimension of latent layer z (default: 100)')
-    parser.add_argument('--lr', type=float, default=2e-5,
+    parser.add_argument('--lr_g', type=float, default=2e-5,
                         help='Initial learning rate (default: 2e-5)')
+    parser.add_argument('--lr_d', type=float, default=2e-5,
+                        help='Initial learning rate (default: 2e-4)')
     parser.add_argument('--dr', type=float, default=0.96,
                         help='Decay rate (default: 0.96)')
     parser.add_argument('--ds', type=int, default=2000,
@@ -29,13 +31,13 @@ def parse_args():
                          help='Loss function weight')
     parser.add_argument('--lambda1', type=float, default=5,
                         help='Loss function weight')
-    parser.add_argument('--lambda2', type=float, default=20,
+    parser.add_argument('--lambda2', type=float, default=15,
                         help='Loss function weight')
     parser.add_argument('--lambda3', type=float, default=10,
                         help='Loss function weight')
     parser.add_argument('--lambda_VAE', type=float, default=0.5,
                         help='Loss function weight')
-    parser.add_argument('--lambda_sim', type=float, default=1000,
+    parser.add_argument('--lambda_sim', type=float, default=150,
                         help='Loss function weight')
     parser.add_argument('--ckpt_path', type=str,
                         default='../training_checkpoints/', help='path to checkpoint folder')
@@ -57,8 +59,8 @@ def train_step(x, batch, category):
         #reconstruct orignal x
         x_logits = generator(bf_x, zb)
         #predict batch
-        bf_x_batch = bf_descriminator(bf_x)
-        x_batch = bf_descriminator(x)
+        bf_x_batch = bf_discriminator(bf_x)
+        x_batch = bf_discriminator(x)
         #predict category
         bf_x_class = bf_classifier(bf_x)
         x_class = bf_classifier(x)
@@ -97,16 +99,16 @@ def train_step(x, batch, category):
                                             batch_encoder.trainable_variables) 
     bf_classifier_gradients = tape.gradient(total_disc_loss,
                                             bf_classifier.trainable_variables)                                     
-    bf_descriminator_gradients = tape.gradient(total_disc_loss,
-                                               bf_descriminator.trainable_variables)
+    bf_discriminator_gradients = tape.gradient(total_disc_loss,
+                                               bf_discriminator.trainable_variables)
     batch_discriminator_gradients = tape.gradient(total_disc_loss,
                                                   batch_discriminator.trainable_variables)
     category_discriminator_gradients = tape.gradient(total_disc_loss,
                                                      category_discriminator.trainable_variables)
 
 
-    bf_discriminator_optimizer.apply_gradients(zip(bf_descriminator_gradients, 
-                                                  bf_descriminator.trainable_variables))
+    bf_discriminator_optimizer.apply_gradients(zip(bf_discriminator_gradients, 
+                                                  bf_discriminator.trainable_variables))
     batch_discriminator_optimizer.apply_gradients(zip(batch_discriminator_gradients,
                                                         batch_discriminator.trainable_variables))
     category_discriminator_optimizer.apply_gradients(zip(category_discriminator_gradients,
@@ -149,8 +151,8 @@ def test_step(x, batch, category):
     #reconstruct orignal x
     x_logits = generator(bf_x, zb)
     #predict batch
-    bf_x_batch = bf_descriminator(bf_x)
-    x_batch = bf_descriminator(x)
+    bf_x_batch = bf_discriminator(bf_x)
+    x_batch = bf_discriminator(x)
     #predict category
     bf_x_class = bf_classifier(bf_x)                                            
     x_class = bf_classifier(x)
@@ -179,7 +181,7 @@ def test_step(x, batch, category):
                         args.lambda1 * zb_gen_loss +\
                         args.lambda2 * zc_gen_loss +\
                         args.lambda3 * bf_gen_loss
-    total_disc_loss = batch_disc_loss + category_disc_loss + bf_disc_loss +  0.1 * bf_class_loss
+    total_disc_loss = batch_disc_loss + category_disc_loss + bf_disc_loss + 0.1 * bf_class_loss
 
     test_gen_loss(total_gen_loss)
     test_disc_loss(total_disc_loss)
@@ -236,26 +238,30 @@ test_dataset = (tf.data.Dataset.from_tensor_slices((x_test, b_test, c_test))
 bf_generator = BF_Generator(x_train.shape, args.z_dim)
 generator = Generator(x_train.shape, args.z_dim)
 batch_encoder = Batch_Encoder(x_train.shape, args.z_dim)
-bf_descriminator = make_Descriminator_x(x_train.shape, b_train.shape[1], activation='softmax')
-bf_classifier = make_Descriminator_x(x_train.shape, c_train.shape[1], activation='sigmoid')
-category_discriminator = make_category_Descriminator_z(c_train.shape[1])
-batch_discriminator = make_batch_Descriminator_z(b_train.shape[1])
+bf_discriminator = make_Discriminator_x(x_train.shape, b_train.shape[1], activation='softmax')
+bf_classifier = make_Discriminator_x(x_train.shape, c_train.shape[1], activation='sigmoid')
+category_discriminator = make_category_Discriminator_z(c_train.shape[1])
+batch_discriminator = make_batch_Discriminator_z(b_train.shape[1])
 
 
 '''create optimizer'''
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        args.lr,
+lr_g_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        args.lr_g,
         decay_steps=args.ds,
         decay_rate=args.dr,
         staircase=True)
-bf_generator_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-generator_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-batch_encoder_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-batch_discriminator_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-category_discriminator_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-bf_discriminator_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-bf_classifier_optimizer = tf.keras.optimizers.Adam(lr_schedule)
-
+lr_d_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        args.lr_d,
+        decay_steps=args.ds,
+        decay_rate=args.dr,
+        staircase=True)
+bf_generator_optimizer = tf.keras.optimizers.Adam(lr_g_schedule)
+generator_optimizer = tf.keras.optimizers.Adam(lr_g_schedule)
+batch_encoder_optimizer = tf.keras.optimizers.Adam(lr_g_schedule)
+batch_discriminator_optimizer = tf.keras.optimizers.Adam(lr_d_schedule)
+category_discriminator_optimizer = tf.keras.optimizers.Adam(lr_d_schedule)
+bf_discriminator_optimizer = tf.keras.optimizers.Adam(lr_d_schedule)
+bf_classifier_optimizer = tf.keras.optimizers.Adam(lr_d_schedule)
 
 
 train_gen_loss = tf.keras.metrics.Mean(name='train_genetator_loss')
@@ -309,7 +315,7 @@ ckpt = tf.train.Checkpoint(
     bf_generator=bf_generator,
     generator=generator, 
     batch_encoder=batch_encoder, 
-    bf_descriminator=bf_descriminator, 
+    bf_discriminator=bf_discriminator, 
     bf_classifier=bf_classifier, 
     category_discriminator=category_discriminator, 
     batch_discriminator=batch_discriminator

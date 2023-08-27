@@ -101,9 +101,9 @@ for (data_name, dataset, dtype) in datasets:
         
         kmeans = cluster.KMeans(n_clusters=n_clusters, random_state=10)
 
-        clustering_algorithms = (
+        clustering_algorithms = [
             ('KMeans', kmeans)
-        )
+        ]
         
         for i_algorithm, (name, algorithm) in enumerate(clustering_algorithms):
             t0 = time.time()

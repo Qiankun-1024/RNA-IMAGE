@@ -10,7 +10,6 @@ from shapely.geometry import Polygon
 
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-from sklearn.decomposition import KernelPCA
 
 
 def embed_gene_with_tsne(x):
